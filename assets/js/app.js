@@ -705,26 +705,33 @@
     bindEvents();
     renderTree();
 
-    // 恢复保存的状态
+    // 恢复上次浏览的位置（记忆功能）
     var saved = loadJSON(LS_STATE, null);
     if (saved) {
-      if (saved.tab && saved.tab !== state.tab) {
-        state.tab = saved.tab;
-        Array.prototype.forEach.call(document.querySelectorAll(".vtab"), function (t) {
-          t.classList.toggle("active", t.getAttribute("data-tab") === saved.tab);
-        });
-        renderTree();
-      }
-      if (saved.key) {
-        var id = saved.key.split("::")[1];
-        for (var mi = 0; mi < DATA.length; mi++) {
-          var hit = itemsOf(DATA[mi]).filter(function (x) { return x.id === id; })[0];
-          if (hit) {
-            renderTree();
-            renderContent(DATA[mi], hit);
-            state.key = saved.key;
-            renderPager();
-            break;
+      // 1) 恢复底部视图：收藏 / 抽题 / 主页
+      if (saved.view === "favs") {
+        switchView("favs");
+      } else if (saved.view === "quiz") {
+        switchView("quiz");
+      } else {
+        // 2) 主页内：恢复 知识/面试 子页
+        if (saved.tab && saved.tab !== state.tab) {
+          state.tab = saved.tab;
+          Array.prototype.forEach.call(document.querySelectorAll(".vtab"), function (t) {
+            t.classList.toggle("active", t.getAttribute("data-tab") === saved.tab);
+          });
+          renderTree();
+        }
+        // 3) 恢复具体条目（走 selectItem，保证侧栏高亮 + 翻页位置都正确）
+        if (saved.key) {
+          var id = saved.key.split("::")[1];
+          for (var mi = 0; mi < DATA.length; mi++) {
+            var hit = itemsOf(DATA[mi]).filter(function (x) { return x.id === id; })[0];
+            if (hit) {
+              state.key = saved.key;
+              selectItem(mi, id);
+              break;
+            }
           }
         }
       }

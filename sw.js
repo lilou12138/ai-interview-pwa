@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ai-transform-v3';
+const CACHE_NAME = 'ai-transform-v4';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -29,26 +29,21 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// network-first：每次都先尝试网络（保证新部署立刻生效），
+// 网络失败（离线）时再降级到缓存，实现「随时能开 + 离线可用」。
 self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) {
-        // Stale-while-revalidate: return cached version, then refresh cache in background
-        fetch(event.request).then((response) => {
-          if (response && response.ok && response.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response));
-          }
-        }).catch(() => {});
-        return cached;
-      }
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
+    fetch(event.request)
+      .then((response) => {
+        if (response && response.ok && response.status === 200) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         }
-        const clone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
         return response;
-      });
-    })
+      })
+      .catch(() => {
+        return caches.match(event.request).then((cached) => cached || Response.error());
+      })
   );
 });
